@@ -1,0 +1,13 @@
+# AUTO REVIEWER V 0.1
+
+GIT - 
+* Have the Backend and Frontend envirornments added to the GIT task.
+* Lets have every granular subtask be properly version controlled with GIT by having the tasks create a branch from the main and then rebase the commits back to the main and create clean PRs.
+ 
+
+Frontend - a shadui components powered react SPA. The main page should have this as the UI. 2 markdown editor - both half the page wide and full page high, and a run button between these markdown files. 
+Once the play button is pressed an API is called with payload from the first markdown and the response is filled into the other markdown.
+
+Backend - Lets use the GCP file and the GCP class to create the API endpoint. Lets use Fast API for the endppoint exposing.
+
+Every task needs to be first broken down into granular single responsibility sub tasks and be assigned a task-id which will be used to initiate the development work.
