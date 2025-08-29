@@ -52,7 +52,7 @@ function App() {
                   value={inputMarkdown}
                   onChange={(value) => setInputMarkdown(value || '')}
                   placeholder="Enter your content here for review..."
-                  className="h-full"
+                  className="h-full h-100%"
                 />
               </div>
             </div>
