@@ -219,6 +219,8 @@ class Reviewer:
       self.system_message = """
       You are an expert evaluator for Agent Completion tasks. Your goal is to generate a comprehensive evaluation report in JSON format, strictly following the provided Pydantic schema EvaluationResponse. The evaluation must be based on the provided task metadata, the concise ruleset, and the explicit turn-by-turn breakdown given in the user prompt. Pay extremely close attention to the definitions and examples provided in the ruleset.
 
+      CRITICAL METADATA PARSING: First, carefully extract the number_of_turns from the task metadata. This is the authoritative source for how many turns should be evaluated. The number_of_turns field in the metadata determines the total number of turns to analyze, regardless of what might be shown in the turn-by-turn breakdown.
+
       CRITICAL TURN DEFINITION: A turn is defined as one complete interaction cycle from one user message to the next user message. This means:
       - 1 turn = 1 user message → all assistant responses and tool calls (regardless of count) → next user message
       - All tool calls, assistant responses, and any intermediate actions that occur between two user messages are considered part of the same turn
@@ -255,7 +257,7 @@ class Reviewer:
         - instruction: Copy the full text of the instruction.
         - classification: Assign an appropriate classification (e.g., 'Context & Domain Awareness', 'Tool Usage Guidelines', 'Assistant Behavior & Tone', 'System Settings', 'Search Refinement').
         - followed: Determine if the assistant's behavior throughout the conversation adhered to this specific instruction.
-      turn_breakdown_list: For each turn (from 1 to 10/13, based on the number_of_turns in the task metadata) as listed in the "Turn-by-Turn Breakdown for Evaluation" section of the user prompt, create a TurnDetail object.
+      turn_breakdown_list: For each turn from 1 to the number_of_turns specified in the task metadata (e.g., if number_of_turns: 11, then evaluate turns 1 through 11), create a TurnDetail object. Use the "Turn-by-Turn Breakdown for Evaluation" section of the user prompt as guidance, but ensure you evaluate exactly the number of turns specified in the metadata.
         - turn_number: The turn number.
         - turn_type: The type of turn (e.g., "Default clarification", "Sequential tool call", "Model failure", "Parallel tool call"). Remember that multiple tool calls within a single turn should be captured as part of that turn.
         - description: Provide a comprehensive description of all actions/outcomes within that turn, including all tool calls and assistant responses that occurred between the user messages. This should capture the complete interaction cycle.
@@ -265,17 +267,25 @@ class Reviewer:
           - error_labels: A list of the most appropriate error labels from the playbook (e.g., wrong_param_value, required_param_missing, wrong_tool_selected, unsatisfactory_summary, no_tool_triggered, tool_over_triggered, parallel_calls_missing, tool_call_not_parsable, others). These should be inferred based on the Model Failure definition and the provided context.
           - critic_comment: A detailed explanation in the third person of why the model failed in that specific turn, drawing upon the playbook's error definitions and turn type definitions.
           - reasoning_response: A hypothetical first-person explanation from the model's perspective about why it made the mistake.
+      
+      IMPORTANT: If the turn-by-turn breakdown in the prompt shows fewer turns than the number_of_turns in metadata, you must still evaluate all turns up to the number_of_turns specified in metadata. For any missing turns in the breakdown, infer the turn type and description based on the conversation flow and context.
+      
       sequential_tool_call_summary, parallel_tool_call_summary, model_failure_summary, flow_break_status, sr_turn: Extract these values directly from the "Overall Task Metadata" section of the user prompt.
       New task-level numerical summaries (total_model_failures, total_parallel_tool_calls, total_sr_turns, total_contextual_turns, total_sequential_tool_calls):
-        - total_model_failures: Count the number of turns in turn_breakdown_list where turn_type is "Model failure".
-        - total_parallel_tool_calls: Count the number of turns in turn_breakdown_list where turn_type includes "Parallel tool call".
+        - total_model_failures: Count the number of turns in turn_breakdown_list where turn_type is "Model failure". This count should be based on the actual turns evaluated (up to number_of_turns from metadata).
+        - total_parallel_tool_calls: Count the number of turns in turn_breakdown_list where turn_type includes "Parallel tool call". This count should be based on the actual turns evaluated (up to number_of_turns from metadata).
         - total_sr_turns: If the inferred_task_category is "Search Refinement" (or "SR" is explicitly indicated in a turn type), this count should reflect the actual number of turns where Search Refinement was genuinely attempted and applied. If SR: Turn X is specified in the prompt, this should generally be at least 1, but confirm if actual turns reflect this.
-        - total_contextual_turns: If the inferred_task_category is "Contextual Information", count turns where the primary action involves retrieving context-specific data (e.g., get_current_location, get_wifi_status).
-        - total_sequential_tool_calls: Count the number of turns in turn_breakdown_list where turn_type includes "Sequential tool call".
+        - total_contextual_turns: If the inferred_task_category is "Contextual Information", count turns where the primary action involves retrieving context-specific data (e.g., get_current_location, get_wifi_status). This count should be based on the actual turns evaluated (up to number_of_turns from metadata).
+        - total_sequential_tool_calls: Count the number of turns in turn_breakdown_list where turn_type includes "Sequential tool call". This count should be based on the actual turns evaluated (up to number_of_turns from metadata).
       Final Evaluation Checklist Fields (respecting_sub_categories, no_flow_breaks, three_model_failures, at_least_3_user_prompts_that_trigger_tool_chains, default_clarification_behavior_followed): Set these boolean fields based on your comprehensive analysis of the conversation and adherence to the prompt's Overall Task Metadata and rules.
       task_level_pass_fail: Determine the overall pass/fail status for the task based on the "Evaluation Criteria for Task-Level Pass/Fail" above.
       task_level_reasoning: Provide a detailed explanation for the task_level_pass_fail status, clearly stating which criteria were met or missed according to the new logic.
       ending_remark: Provide a friendly and concise concluding remark.
+      
+      VALIDATION CHECK: Before finalizing the response, verify that:
+      1. The turn_breakdown_list contains exactly the number of turns specified in the metadata's number_of_turns field
+      2. All turn numbers from 1 to number_of_turns are present and sequential
+      3. The numerical summaries accurately reflect the counts from the evaluated turns
        """
         
     async def review(self, content: str):
