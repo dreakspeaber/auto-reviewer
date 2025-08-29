@@ -98,111 +98,21 @@ class EvaluationResponse(BaseModel):
 
     def to_markdown(self) -> str:
         """
-        Convert the EvaluationResponse to a formatted markdown string.
-        Optimized for performance using efficient string operations.
+        Convert the EvaluationResponse to YAML format using PyYAML.
+        This is a simple and reliable conversion from JSON to YAML.
         
         Returns:
-            str: A formatted markdown representation of the evaluation response.
+            str: A YAML representation of the evaluation response.
         """
-        # Pre-compute status icons and text
-        task_status_icon = "✅" if self.task_level_pass_fail == "PASS" else "❌"
-        task_status_text = "PASS" if self.task_level_pass_fail == "PASS" else "FAIL"
+        import yaml
         
-        # Build sections efficiently using list comprehensions and joins
-        sm_directives = "\n".join(f"- {directive}" for directive in self.overall_sm_directives)
+        # Convert the Pydantic model to a dictionary
+        data = self.model_dump()
         
-        sm_validations = "\n\n".join(
-            f"### {v.sm_id}: {v.classification}\n"
-            f"{'✅' if v.followed else '❌'} **{v.instruction}**"
-            for v in self.sm_instruction_validations
-        )
+        # Convert to YAML with nice formatting
+        yaml_str = yaml.dump(data, default_flow_style=False, sort_keys=False, indent=2, allow_unicode=True)
         
-        turn_breakdowns = []
-        for turn in self.turn_breakdown_list:
-            status = "✅" if turn.passed else "❌"
-            turn_section = [
-                f"### Turn {turn.turn_number}: {turn.turn_type}",
-                f"{status} **{turn.description}**"
-            ]
-            
-            if turn.cited_sm_instructions:
-                turn_section.append(f"**Cited SM Instructions:** {', '.join(turn.cited_sm_instructions)}")
-            
-            if turn.model_failure_details:
-                failure_details = [
-                    "**Model Failure Details:**",
-                    f"- **Error Labels:** {', '.join(turn.model_failure_details.error_labels)}",
-                    f"- **Critic Comment:** {turn.model_failure_details.critic_comment}"
-                ]
-                if turn.model_failure_details.reasoning_response:
-                    failure_details.append(f"- **Reasoning Response:** {turn.model_failure_details.reasoning_response}")
-                turn_section.extend(failure_details)
-            
-            turn_breakdowns.append("\n".join(turn_section))
-        
-        turn_sections = "\n\n".join(turn_breakdowns)
-        
-        # Task-level summaries
-        task_summaries = [
-            f"- **Sequential Tool Call Summary:** {self.sequential_tool_call_summary}",
-            f"- **Parallel Tool Call Summary:** {self.parallel_tool_call_summary}",
-            f"- **Model Failure Summary:** {self.model_failure_summary}",
-            f"- **Flow Break Status:** {self.flow_break_status}",
-            f"- **Search Refinement Turn:** {self.sr_turn}"
-        ]
-        
-        # Numerical summaries
-        numerical_summaries = [
-            f"- **Total Model Failures:** {self.total_model_failures}",
-            f"- **Total Parallel Tool Calls:** {self.total_parallel_tool_calls}",
-            f"- **Total Search Refinement Turns:** {self.total_sr_turns}",
-            f"- **Total Contextual Turns:** {self.total_contextual_turns}"
-        ]
-        
-        # Evaluation checklist
-        checklist_items = [
-            ("Respecting Sub-categories", self.respecting_sub_categories),
-            ("No Flow Breaks", self.no_flow_breaks),
-            ("Three Model Failures", self.three_model_failures),
-            ("At Least 3 User Prompts Trigger Tool Chains", self.at_least_3_user_prompts_that_trigger_tool_chains),
-            ("Default Clarification Behavior Followed", self.default_clarification_behavior_followed)
-        ]
-        
-        checklist = "\n".join(
-            f"{'✅' if status else '❌'} **{item}**"
-            for item, status in checklist_items
-        )
-        
-        # Assemble the complete markdown using a single f-string for maximum performance
-        return f"""# Evaluation Report
-
-{self.starting_remark}
-
-## Overall System Message Directives
-{sm_directives}
-
-## System Message Instruction Validations
-{sm_validations}
-
-## Turn-by-Turn Breakdown
-{turn_sections}
-
-## Task-level Summaries
-{chr(10).join(task_summaries)}
-
-## Numerical Summaries
-{chr(10).join(numerical_summaries)}
-
-## Evaluation Checklist
-{checklist}
-
-## Overall Evaluation: {task_status_icon} {task_status_text}
-
-**Reasoning:** {self.task_level_reasoning}
-
-## Conclusion
-
-{self.ending_remark}"""
+        return yaml_str
 
 
 class Reviewer:

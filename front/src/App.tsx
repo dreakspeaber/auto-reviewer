@@ -2,12 +2,13 @@ import React, { useState } from 'react';
 import { Button } from './components/ui/button';
 import { ScrollArea } from './components/ui/scroll-area';
 import MarkdownEditor from './components/MarkdownEditor';
+import YamlRenderer from './components/YamlRenderer';
 import { Play } from 'lucide-react';
 import axios from 'axios';
 
 function App() {
   const [inputMarkdown, setInputMarkdown] = useState('');
-  const [outputMarkdown, setOutputMarkdown] = useState('');
+  const [outputYaml, setOutputYaml] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleRun = async () => {
@@ -22,10 +23,10 @@ function App() {
         content: inputMarkdown
       });
       
-      setOutputMarkdown(response.data.reviewed_content);
+      setOutputYaml(response.data.reviewed_content);
     } catch (error) {
       console.error('Error calling API:', error);
-      setOutputMarkdown('Error: Could not process the content. Please try again.');
+      setOutputYaml('Error: Could not process the content. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -69,16 +70,14 @@ function App() {
               </Button>
             </div>
 
-            {/* Right Markdown Editor */}
+            {/* Right YAML Renderer */}
             <div className="flex-1 border rounded-lg overflow-hidden bg-card">
               <div className="p-3 border-b bg-muted">
-                <h2 className="text-sm font-medium text-muted-foreground">Reviewed Content</h2>
+                <h2 className="text-sm font-medium text-muted-foreground">Reviewed Content (YAML)</h2>
               </div>
               <div className="h-full">
-                <MarkdownEditor
-                  value={outputMarkdown}
-                  onChange={(value) => setOutputMarkdown(value || '')}
-                  placeholder="Reviewed content will appear here..."
+                <YamlRenderer
+                  value={outputYaml}
                   className="h-full"
                 />
               </div>
